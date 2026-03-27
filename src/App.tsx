@@ -56,7 +56,8 @@ export default function App() {
     const state = useGameStore.getState()
     // Defer state update out of the effect body to avoid cascading render warning
     Promise.resolve().then(() => {
-      if (loaded && state.hero.level > 1) {
+      // 'Hero' is the store default placeholder — any other name means a game was started
+      if (loaded && state.hero.name !== 'Hero') {
         setPhase('game')
       } else {
         setPhase('character-creation')
