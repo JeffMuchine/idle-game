@@ -9,7 +9,7 @@ const SLOT_ICONS: Record<string, string> = {
 }
 
 function ItemRow({ item }: { item: Item }) {
-  const { equipItem, sellItem } = useGameStore(s => ({ equipItem: s.equipItem, sellItem: s.sellItem }))
+  const { equipItem, sellItem } = useGameStore(useShallow(s => ({ equipItem: s.equipItem, sellItem: s.sellItem })))
   const rarityColor = getRarityColor(item.rarity)
   const sellValue = Math.round(item.level * 5 * { common: 1, uncommon: 2, rare: 5, epic: 15, legendary: 50 }[item.rarity])
 
