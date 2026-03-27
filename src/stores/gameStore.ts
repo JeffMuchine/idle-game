@@ -218,6 +218,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     state.combat.heroMaxHp = stats.maxHp
     state.combat.monster = spawnMonster(0, 1)
     set(state)
+    // Save immediately so a page refresh within the first 30s keeps the character
+    saveGame(state as unknown as GameState)
   },
 
   loadSavedGame: () => {
@@ -511,18 +513,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
         sfx.enemyAttack()
       }
 
-      // Hero dies — respawn on same floor
+      // Hero dies — reset to dungeon 0 floor 1
       if (heroHp <= 0) {
         heroHp = effectiveStats.maxHp  // full heal on death
-        combatLogEntry = `You were defeated! Respawning...`
+        combatLogEntry = `You were defeated! Back to the start...`
         newCombatPhase = 'dead'
+        newDungeon = { currentDungeon: 0, currentFloor: 1, maxFloorReached: dungeon.maxFloorReached }
         setTimeout(() => {
           set(s => ({
+            dungeon: { ...s.dungeon, currentDungeon: 0, currentFloor: 1 },
             combat: {
               ...s.combat,
               phase: 'fighting',
               heroHp: getEffectiveStats(s.hero).maxHp,
-              monster: spawnMonster(s.dungeon.currentDungeon, s.dungeon.currentFloor),
+              monster: spawnMonster(0, 1),
+              lastHeroAttackTime: 0,
             }
           }))
         }, 1500)
