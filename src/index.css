@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-bg-base: #0d0d0f;
+  --color-bg-deep: #111118;
+  --color-bg-panel: #16161e;
+  --color-bg-elevated: #22223a;
+
+  --color-gold-bright: #ffd700;
+  --color-gold-primary: #c9a84c;
+  --color-gold-muted: #8b6914;
+  --color-gold-dark: #3d2e0a;
+
+  --color-rarity-common: #9d9d9d;
+  --color-rarity-uncommon: #1eff00;
+  --color-rarity-rare: #0070dd;
+  --color-rarity-epic: #a335ee;
+  --color-rarity-legendary: #ff8000;
+
+  --color-class-warrior: #c53030;
+  --color-class-mage: #7c3aed;
+  --color-class-rogue: #16a34a;
+  --color-class-cleric: #ca8a04;
+
+  --color-ui-text: #e8e0d0;
+  --color-ui-muted: #7a7a9a;
+  --color-ui-border: #2a2a3a;
+  --color-ui-border-hover: #44445a;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+
+  --font-family-display: 'Cinzel', serif;
+  --font-family-body: 'Crimson Pro', Georgia, serif;
+
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 15px;
+  --font-size-lg: 17px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 36px;
+
+  --radius-sm: 2px;
+  --radius: 4px;
+  --radius-md: 6px;
+  --radius-full: 9999px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-base);
+  color: var(--color-ui-text);
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--color-ui-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ui-border-hover); }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+@keyframes slideInRight {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideOutRight {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(110%); opacity: 0; }
+}
+@keyframes fadeInUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes legendaryPulse {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(255,128,0,0.67); }
+  50%       { box-shadow: 0 0 20px 6px rgba(255,128,0,0.8); }
+}
+@keyframes epicPulse {
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(163,53,238,0.53); }
+  50%       { box-shadow: 0 0 16px 5px rgba(163,53,238,0.67); }
+}
+@keyframes prestigeWipe {
+  0%   { opacity: 0; transform: scale(0.95); }
+  15%  { opacity: 1; transform: scale(1); }
+  85%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-40px); }
+}
+
+.shake { animation: shake 0.4s ease-in-out; }
+.slide-in-right { animation: slideInRight 250ms ease-out forwards; }
+.slide-out-right { animation: slideOutRight 250ms ease-in forwards; }
+.fade-in-up { animation: fadeInUp 120ms ease-out forwards; }
+.legendary-glow { animation: legendaryPulse 2s ease-in-out infinite; }
+.epic-glow { animation: epicPulse 2s ease-in-out infinite; }
+.prestige-wipe { animation: prestigeWipe 2s ease-in-out forwards; }
+.float-up { animation: floatUp 1s ease-out forwards; }
