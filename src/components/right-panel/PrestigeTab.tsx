@@ -1,7 +1,6 @@
 import { useGameStore } from '../../stores/gameStore'
 import { useShallow } from 'zustand/react/shallow'
 import { SOUL_UPGRADES } from '../../data/soulUpgrades'
-import { formatNumber } from '../../utils/format'
 
 export function PrestigeTab() {
   const { prestige, dungeon, buySoulUpgrade } = useGameStore(useShallow(s => ({
@@ -57,8 +56,6 @@ export function PrestigeTab() {
         const maxed        = currentLevel >= upgrade.maxLevel
         const cost         = upgrade.costPerLevel * (currentLevel + 1)
         const canAfford    = prestige.ascensionPoints >= cost
-        const effect       = upgrade.effect(currentLevel + 1)
-
         return (
           <div key={upgrade.id} style={{
             marginBottom: '8px',

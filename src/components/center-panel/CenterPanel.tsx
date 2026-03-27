@@ -13,10 +13,9 @@ const DUNGEON_THEMES: Record<number, { bg: string; accent: string }> = {
 }
 
 export function CenterPanel() {
-  const { combat, dungeon, hero } = useGameStore(useShallow(s => ({
+  const { combat, dungeon } = useGameStore(useShallow(s => ({
     combat:  s.combat,
     dungeon: s.dungeon,
-    hero:    s.hero,
   })))
 
   const monster   = combat.monster

@@ -1,4 +1,4 @@
-import type { GameState, Achievement } from '../types'
+import type { GameState } from '../types'
 
 // Check all achievement conditions and return IDs of newly unlocked achievements
 export function checkAchievements(state: GameState): string[] {
@@ -49,7 +49,6 @@ export function checkAchievements(state: GameState): string[] {
   ) as boolean)
 
   // Progression
-  const globalFloor = state.dungeon.currentDungeon * 100 + state.dungeon.currentFloor
   check('floor_10',  state.dungeon.maxFloorReached >= 10)
   check('floor_50',  state.dungeon.maxFloorReached >= 50)
   check('floor_100', state.dungeon.maxFloorReached >= 100)

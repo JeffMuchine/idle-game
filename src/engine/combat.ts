@@ -1,4 +1,4 @@
-import type { Hero, Monster, HeroClass, EquipSlot, Item, HeroStats } from '../types'
+import type { Hero, Monster, HeroClass, Item, HeroStats } from '../types'
 import { PRNG } from '../utils/prng'
 import { getSkillById } from '../data/skills'
 
@@ -20,9 +20,6 @@ export function getEffectiveStats(hero: Hero): HeroStats {
   }
 
   // Apply skill tree bonuses
-  let goldMult  = 1
-  let xpMult    = 1
-  let hpRegen   = 0
   const appliedCritDamageBonus: number[] = []
 
   for (const nodeId of hero.skillsUnlocked) {
@@ -37,14 +34,6 @@ export function getEffectiveStats(hero: Hero): HeroStats {
       if (effect.stat === 'speed')      base.speed     *= effect.multiplier
       if (effect.stat === 'critChance') base.critChance = Math.min(0.95, base.critChance + 0.05)
       if (effect.stat === 'critDamage') appliedCritDamageBonus.push(0.5)
-    }
-
-    if (effect.type === 'passive') {
-      if (effect.abilityId === 'gold_bonus_5')  goldMult *= 1.05
-      if (effect.abilityId === 'gold_bonus_15') goldMult *= 1.15
-      if (effect.abilityId === 'gold_bonus_30') goldMult *= 1.30
-      if (effect.abilityId === 'xp_bonus_5')   xpMult  *= 1.05
-      if (effect.abilityId === 'hp_regen_1')   hpRegen += 0.01
     }
 
     if (effect.abilityId === 'backstab_active') {
@@ -97,8 +86,6 @@ export interface AttackResult {
   abilityUsed: string | null
 }
 
-let _rollCount = 0  // for seeding: fine for game purposes
-
 export function calculateHeroAttack(
   hero: Hero,
   monster: Monster,
@@ -127,8 +114,7 @@ export function calculateHeroAttack(
 export function calculateMonsterAttack(
   monster: Monster,
   heroDefense: number,
-  heroClass: HeroClass,
-  prng: PRNG
+  heroClass: HeroClass
 ): number {
   const reduction = heroClass === 'warrior' ? Math.floor(heroDefense / 100) * 0.10 : 0
   const raw = monster.attack * (1 - Math.min(0.80, reduction))

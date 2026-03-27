@@ -1,6 +1,6 @@
 import { useGameStore } from '../../stores/gameStore'
 import { useShallow } from 'zustand/react/shallow'
-import { formatGold, formatNumber } from '../../utils/format'
+import { formatGold } from '../../utils/format'
 import { DUNGEONS } from '../../data/monsters'
 
 const CLASS_COLORS: Record<string, string> = {

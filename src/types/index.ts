@@ -53,6 +53,7 @@ export interface CombatState {
   lastDamageTaken: number
   floatingTexts: FloatingText[]
   combatLog: string[]
+  lastHeroAttackTime: number   // wall-clock ms; gates attack by speed stat
 }
 
 export interface FloatingText {

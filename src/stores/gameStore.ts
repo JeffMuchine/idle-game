@@ -1,14 +1,14 @@
 import { create } from 'zustand'
 import type { GameState, Hero, HeroClass, Item, EquipSlot, Monster, RightTab, GameSpeed } from '../types'
-import { xpRequired, getEffectiveStats, calculateHeroAttack, calculateMonsterAttack, tryActivateAbility, calculateIdleDPS, getGoldMultiplierFromSoul, getXpMultiplierFromSoul, getOfflineRate, getStartFloor } from '../engine/combat'
+import { xpRequired, getEffectiveStats, calculateHeroAttack, calculateMonsterAttack, tryActivateAbility, calculateIdleDPS, getGoldMultiplierFromSoul, getXpMultiplierFromSoul, getOfflineRate, getStartFloor, getAttackIntervalMs } from '../engine/combat'
 import { checkAchievements } from '../engine/achievements'
-import { generateItem, rollItemDrop, ALL_SLOTS } from '../data/items'
-import { getMonstersForDungeon, getBossForDungeon, scaleMonster, DUNGEONS } from '../data/monsters'
+import { generateItem, rollItemDrop } from '../data/items'
+import { getMonstersForDungeon, getBossForDungeon, scaleMonster } from '../data/monsters'
 import { buildInitialAchievements } from '../data/achievements'
 import { saveGame, loadGame, getOfflineSeconds, acquireTabLock } from '../utils/save'
 import { sfx, setMuted } from '../utils/sound'
 import { PRNG, seedFromFloor } from '../utils/prng'
-import { getSkillById, getSkillsForClass } from '../data/skills'
+import { getSkillById } from '../data/skills'
 import { SOUL_UPGRADES } from '../data/soulUpgrades'
 
 // ============================================================
@@ -52,6 +52,7 @@ function makeInitialState(heroName: string, heroClass: HeroClass): GameState {
       lastDamageTaken: 0,
       floatingTexts: [],
       combatLog: [],
+      lastHeroAttackTime: 0,
     },
     prestige: {
       ascensionCount: 0,
@@ -241,6 +242,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         combat: {
           ...(saved.combat ?? {}),
           floatingTexts: [],
+          lastHeroAttackTime: 0,
           monster: spawnMonster(
             saved.dungeon?.currentDungeon ?? 0,
             saved.dungeon?.currentFloor ?? 1
@@ -254,6 +256,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         combat: {
           ...(saved.combat ?? {}),
           floatingTexts: [],
+          lastHeroAttackTime: 0,
           monster: spawnMonster(
             saved.dungeon?.currentDungeon ?? 0,
             saved.dungeon?.currentFloor ?? 1
@@ -286,7 +289,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const prng = new PRNG(seedFromFloor(dungeon.currentFloor, now))
     const newLog = [...combat.combatLog]
     const newFloating = [...combat.floatingTexts].filter(ft => ft.expires > now)
-    let newToasts = [...state.toasts].filter(t => t.expires > now)
+    const newToasts = [...state.toasts].filter(t => t.expires > now)
 
     // ---- Hero HP regen (Cleric passive) ----
     let heroHp = combat.heroHp
@@ -294,56 +297,72 @@ export const useGameStore = create<GameStore>((set, get) => ({
       heroHp = Math.min(heroHp + effectiveStats.maxHp * 0.01, effectiveStats.maxHp)
     }
 
+    // ---- Attack interval gate: hero speed stat controls attack cadence ----
+    const attackIntervalMs = getAttackIntervalMs(effectiveStats)
+    const gameSpeed = settings.gameSpeed as number
+    const timeElapsed = (now - (combat.lastHeroAttackTime || 0)) * gameSpeed
+    const heroCanAttack = timeElapsed >= attackIntervalMs
+    let lastHeroAttackTime = combat.lastHeroAttackTime || 0
+
     // ---- Ability check ----
-    const abilityResult = tryActivateAbility(hero, combat.monster, effectiveStats, now, dungeon.currentDungeon)
-    let newAbilityLastUsed = { ...hero.abilityLastUsed }
+    const abilityResult = heroCanAttack
+      ? tryActivateAbility(hero, combat.monster, effectiveStats, now, dungeon.currentDungeon)
+      : null
+    const newAbilityLastUsed = { ...hero.abilityLastUsed }
 
     // ---- Hero attacks monster ----
-    const attackResult = calculateHeroAttack(hero, combat.monster, effectiveStats, now, dungeon.currentDungeon, prng)
-    let damageToMonster = attackResult.damage
+    let damageToMonster = 0
     let combatLogEntry = ''
+    let newMonsterHp = combat.monster.hp
 
-    if (abilityResult) {
-      damageToMonster += abilityResult.damage
-      newAbilityLastUsed[abilityResult.abilityId] = now
-      combatLogEntry = `${abilityResult.name}! ${damageToMonster} damage`
-      sfx.attack()
-      if (abilityResult.abilityId.includes('fireball')) sfx.abilityFireball()
-      else if (abilityResult.abilityId.includes('cleave')) sfx.abilityCleave()
-      else if (abilityResult.abilityId.includes('smite')) sfx.abilitySmite()
-      else if (abilityResult.abilityId.includes('backstab')) sfx.abilityBackstab()
-    } else {
-      combatLogEntry = attackResult.isCrit
-        ? `Critical hit! ${damageToMonster}`
-        : `Hit! ${damageToMonster}`
-      sfx.attack()
+    if (heroCanAttack) {
+      lastHeroAttackTime = now
+      const attackResult = calculateHeroAttack(hero, combat.monster, effectiveStats, now, dungeon.currentDungeon, prng)
+      damageToMonster = attackResult.damage
+
+      if (abilityResult) {
+        damageToMonster += abilityResult.damage
+        newAbilityLastUsed[abilityResult.abilityId] = now
+        combatLogEntry = `${abilityResult.name}! ${damageToMonster} damage`
+        sfx.attack()
+        if (abilityResult.abilityId.includes('fireball')) sfx.abilityFireball()
+        else if (abilityResult.abilityId.includes('cleave')) sfx.abilityCleave()
+        else if (abilityResult.abilityId.includes('smite')) sfx.abilitySmite()
+        else if (abilityResult.abilityId.includes('backstab')) sfx.abilityBackstab()
+      } else {
+        combatLogEntry = attackResult.isCrit
+          ? `Critical hit! ${damageToMonster}`
+          : `Hit! ${damageToMonster}`
+        sfx.attack()
+      }
+
+      newMonsterHp = combat.monster.hp - damageToMonster
+
+      // Floating damage text
+      newFloating.push({
+        id: `ft_${now}`,
+        text: attackResult.isCrit ? `${damageToMonster}!` : `${damageToMonster}`,
+        x: 50 + (prng.next() - 0.5) * 30,
+        y: 40,
+        color: attackResult.isCrit ? '#ffd700' : '#e8e0d0',
+        expires: now + 1000,
+      })
     }
 
-    let newMonsterHp = combat.monster.hp - damageToMonster
     const newStats = { ...stats, totalDamageDealt: stats.totalDamageDealt + damageToMonster }
-
-    // Floating damage text
-    newFloating.push({
-      id: `ft_${now}`,
-      text: attackResult.isCrit ? `${damageToMonster}!` : `${damageToMonster}`,
-      x: 50 + (prng.next() - 0.5) * 30,
-      y: 40,
-      color: attackResult.isCrit ? '#ffd700' : '#e8e0d0',
-      expires: now + 1000,
-    })
 
     let newGold = state.gold
     let newHero = { ...hero, abilityLastUsed: newAbilityLastUsed }
-    let newPrestige = { ...prestige }
+    const newPrestige = { ...prestige }
     let newInventory = [...state.inventory]
-    let newBestiary = { ...state.bestiary }
+    const newBestiary = { ...state.bestiary }
     let newDungeon = { ...dungeon }
     let newAchievements = { ...state.achievements }
     let newCombatPhase: GameState['combat']['phase'] = 'fighting'
-    let newMonster = { ...combat.monster, hp: Math.max(0, newMonsterHp) }
+    const newMonster = { ...combat.monster, hp: Math.max(0, newMonsterHp) }
 
     // ---- Monster dies ----
-    if (newMonsterHp <= 0) {
+    if (heroCanAttack && newMonsterHp <= 0) {
       const monster = combat.monster
       newCombatPhase = 'victory'
 
@@ -476,7 +495,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     } else {
       // ---- Monster attacks hero ----
-      const monsterDmg = calculateMonsterAttack(combat.monster, effectiveStats.defense, hero.heroClass, prng)
+      const monsterDmg = calculateMonsterAttack(combat.monster, effectiveStats.defense, hero.heroClass)
       heroHp = heroHp - monsterDmg
       newStats.totalDamageDealt += 0  // already counted above
 
@@ -531,6 +550,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         floatingTexts: newFloating,
         lastDamageDealt: damageToMonster,
         lastDamageTaken: 0,
+        lastHeroAttackTime,
       },
     }
 
@@ -566,9 +586,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         heroMaxHp: getEffectiveStats(newHero).maxHp,
         monster: newMonster,
         lastDamageDealt: damageToMonster,
-        lastDamageTaken: combat.monster ? calculateMonsterAttack(combat.monster, effectiveStats.defense, hero.heroClass, prng) : 0,
+        lastDamageTaken: combat.monster ? calculateMonsterAttack(combat.monster, effectiveStats.defense, hero.heroClass) : 0,
         floatingTexts: newFloating,
         combatLog: addToLog(newLog, combatLogEntry),
+        lastHeroAttackTime,
       },
     })
   },
@@ -696,9 +717,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         prestigeTier: calcPrestigeTier(s.prestige.ascensionCount + 1),
       }
 
-      const stats = getEffectiveStats(s.hero)
       const startFloor = getStartFloor(s.prestige.soulUpgrades)
       const newHero = makeInitialHero(s.hero.name, s.hero.heroClass)
+      _killCount = 0  // reset so monster variety is consistent each run
 
       sfx.prestige()
 
@@ -716,6 +737,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           lastDamageTaken: 0,
           floatingTexts: [],
           combatLog: ['A new run begins...'],
+          lastHeroAttackTime: 0,
         },
         prestige: newPrestige,
         showPrestigeModal: false,

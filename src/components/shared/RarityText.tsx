@@ -22,6 +22,7 @@ export function RarityText({ rarity, children, className }: RarityTextProps) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getRarityColor(rarity: Rarity): string {
   return RARITY_COLORS[rarity]
 }

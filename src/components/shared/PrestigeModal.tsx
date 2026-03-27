@@ -1,14 +1,11 @@
 import { useGameStore } from '../../stores/gameStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './Modal'
-import { formatNumber } from '../../utils/format'
-
 export function PrestigeModal() {
-  const { showPrestigeModal, prestige, dungeon, hero, setShowPrestigeModal, ascend } = useGameStore(useShallow(s => ({
+  const { showPrestigeModal, prestige, dungeon, setShowPrestigeModal, ascend } = useGameStore(useShallow(s => ({
     showPrestigeModal:    s.showPrestigeModal,
     prestige:             s.prestige,
     dungeon:              s.dungeon,
-    hero:                 s.hero,
     setShowPrestigeModal: s.setShowPrestigeModal,
     ascend:               s.ascend,
   })))

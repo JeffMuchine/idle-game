@@ -1,7 +1,7 @@
 import { useGameStore } from '../../stores/gameStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './Modal'
-import { formatGold, formatTime } from '../../utils/format'
+import { formatGold } from '../../utils/format'
 
 export function OfflineModal() {
   const { showOfflineModal, offlineGoldEarned, dismissOfflineModal } = useGameStore(useShallow(s => ({

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from './stores/gameStore'
 import { useGameLoop } from './hooks/useGameLoop'
 import { CharacterCreation } from './components/CharacterCreation'
@@ -41,26 +41,36 @@ type AppPhase = 'loading' | 'character-creation' | 'game'
 export default function App() {
   const [phase, setPhase] = useState<AppPhase>('loading')
   const loadSavedGame = useGameStore(s => s.loadSavedGame)
-  const heroClass     = useGameStore(s => s.hero.heroClass)
   const combatMonster = useGameStore(s => s.combat.monster)
+  const heroName      = useGameStore(s => s.hero.name)
   const muted         = useGameStore(s => s.settings.muted)
+  const initDone      = useRef(false)
 
+  // Initialise once — load save and apply mute setting
   useEffect(() => {
+    if (initDone.current) return
+    initDone.current = true
+
     setMuted(muted)
     const loaded = loadSavedGame()
     const state = useGameStore.getState()
-    if (loaded && state.hero.level > 1) {
-      setPhase('game')
-    } else {
-      setPhase('character-creation')
-    }
+    // Defer state update out of the effect body to avoid cascading render warning
+    Promise.resolve().then(() => {
+      if (loaded && state.hero.level > 1) {
+        setPhase('game')
+      } else {
+        setPhase('character-creation')
+      }
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Transition to game once character has been created (monster spawned + name set)
   useEffect(() => {
-    if (phase === 'character-creation' && combatMonster && heroClass) {
-      setPhase('game')
+    if (phase === 'character-creation' && combatMonster && heroName !== 'Hero') {
+      Promise.resolve().then(() => setPhase('game'))
     }
-  }, [combatMonster, heroClass, phase])
+  }, [combatMonster, heroName, phase])
 
   if (phase === 'loading') {
     return (
